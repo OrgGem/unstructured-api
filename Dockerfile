@@ -61,7 +61,9 @@ ENV UV_PROJECT_ENVIRONMENT="${HOME}/.local"
 
 COPY --chown=${NB_USER}:${NB_USER} pyproject.toml pyproject.toml
 COPY --chown=${NB_USER}:${NB_USER} uv.lock uv.lock
-RUN uv sync --no-dev --no-install-project --frozen
+RUN mkdir -p ~/.cache && chmod 777 ~/.cache && \
+    uv sync --no-dev --no-install-project --frozen && \
+    rm -rf ~/.cache/uv
 
 ARG PANDOC_VERSION="3.9"
 RUN ARCH=$(uname -m) && \
@@ -71,25 +73,33 @@ RUN ARCH=$(uname -m) && \
     cp /tmp/pandoc-${PANDOC_VERSION}/bin/pandoc /home/${USER}/.local/bin/ && \
     rm -rf /tmp/pandoc*
 
-RUN ${PYTHON} -c "from unstructured.nlp.tokenize import download_nltk_packages; download_nltk_packages()" && \
-    ${PYTHON} -c "from unstructured.partition.model_init import initialize; initialize()" && \
-    ${PYTHON} -c "from unstructured_inference.models.tables import UnstructuredTableTransformerModel; model = UnstructuredTableTransformerModel(); model.initialize('microsoft/table-transformer-structure-recognition')"
+# Pre-load all required models to ensure they are cached in the Docker image
+# This significantly speeds up cold starts and enables offline operation
+RUN echo "Downloading NLTK packages..." && \
+    ${PYTHON} -c "from unstructured.nlp.tokenize import download_nltk_packages; download_nltk_packages()" && \
+    echo "Initializing unstructured models..." && \
+    ${PYTHON} -c "from unstructured.partition.model_init import initialize; initialize()"
 
-# Pre-load YOLO detection model and PaddleOCR models for OCR processing
-# This ensures models are available offline and speeds up first-time inference
-RUN echo "Pre-loading YOLO and PaddleOCR models..." && \
+# Pre-load Table Transformer Model for table structure recognition
+RUN echo "Loading Table Transformer model..." && \
+    ${PYTHON} -c "from unstructured_inference.models.tables import UnstructuredTableTransformerModel; \
+model = UnstructuredTableTransformerModel(); \
+model.initialize('microsoft/table-transformer-structure-recognition'); \
+print('Table Transformer model loaded successfully')"
+
+# Pre-load YOLO detection model
+RUN echo "Loading YOLO detection model..." && \
     ${PYTHON} -c "from unstructured_inference.models.base import get_model; \
-try: \
-    yolo_model = get_model('yolox'); \
-    print('YOLO model loaded successfully'); \
-except Exception as e: \
-    print(f'YOLO model loading failed (will download on first use): {e}'); \
-try: \
-    from paddleocr import PaddleOCR; \
-    ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False); \
-    print('PaddleOCR model loaded successfully'); \
-except Exception as e: \
-    print(f'PaddleOCR loading failed (will download on first use): {e}')" || true
+model = get_model('yolox'); \
+print('YOLO model loaded and cached successfully')"
+
+# Pre-load PaddleOCR models for text extraction
+RUN echo "Loading PaddleOCR models..." && \
+    ${PYTHON} -c "from paddleocr import PaddleOCR; \
+import logging; \
+logging.getLogger('ppocr').setLevel(logging.ERROR); \
+ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False); \
+print('PaddleOCR (English) model loaded and cached successfully')"
 
 COPY --chown=${NB_USER}:${NB_USER} CHANGELOG.md CHANGELOG.md
 COPY --chown=${NB_USER}:${NB_USER} logger_config.yaml logger_config.yaml
