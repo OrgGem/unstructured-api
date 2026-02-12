@@ -11,6 +11,8 @@ Repository này là **Unstructured API** - một hệ thống xử lý và phân
 - Xử lý song song cho PDF lớn
 - Bảo mật với API key
 - Xuất kết quả dạng JSON hoặc CSV
+- **🆕 Hỗ trợ proxy deployment với custom subpath**
+- **🆕 Pre-loaded OCR và detection models trong Docker image**
 
 ---
 
@@ -159,6 +161,47 @@ curl -X POST 'https://api.unstructured.io/general/v0/general' \
   -F 'files=@document.pdf'
 ```
 
+### 7. 🆕 Deploy Sau Proxy Với Custom Subpath
+```bash
+# Chạy với subpath /api/v1
+docker run -p 8000:8000 -e API_ROOT_PATH="/api/v1" \
+  unstructured-api:latest
+
+# Truy cập API tại:
+# http://localhost:8000/api/v1/healthcheck
+# http://localhost:8000/api/v1/general/v0/general
+```
+
+**Cấu hình Nginx:**
+```nginx
+location /api/v1/ {
+    proxy_pass http://localhost:8000/;
+    proxy_set_header Host $host;
+}
+```
+
+---
+
+## 🆕 Tính Năng Mới: Pre-loaded Models
+
+Docker image hiện đã tích hợp sẵn các ML models, giúp:
+- ✅ Khởi động nhanh hơn (không cần download models lần đầu)
+- ✅ Hoạt động offline (không cần internet để load models)
+- ✅ Hiệu suất ổn định (không bị delay do download)
+
+**Models được tích hợp:**
+1. **YOLO Detection Model (yolox)** - Phát hiện object trong tài liệu
+2. **PaddleOCR Models** - OCR đa ngôn ngữ
+3. **Table Transformer Model** - Trích xuất cấu trúc bảng
+
+**Sử dụng YOLO model:**
+```bash
+curl -X POST 'http://localhost:8000/general/v0/general' \
+  -F 'files=@document.pdf' \
+  -F 'strategy=hi_res' \
+  -F 'hi_res_model_name=yolox'
+```
+
 ---
 
 ## 🚀 Cài Đặt & Chạy
@@ -203,6 +246,7 @@ ALLOWED_ORIGINS=https://example.com  # CORS origins
 PORT=8000  # Port server
 UNSTRUCTURED_MEMORY_FREE_MINIMUM_MB=2048  # RAM tối thiểu
 MAX_LIFETIME_SECONDS=3600  # Thời gian sống server
+API_ROOT_PATH=/api/v1  # 🆕 Custom subpath cho proxy deployment
 ```
 
 #### Xử Lý Song Song (Parallel Mode)
@@ -212,6 +256,12 @@ UNSTRUCTURED_PARALLEL_MODE_URL=http://remote-api
 UNSTRUCTURED_PARALLEL_MODE_THREADS=3
 UNSTRUCTURED_PARALLEL_MODE_SPLIT_SIZE=1
 ```
+
+**🆕 Chi tiết về proxy deployment:**
+Xem file [PROXY_DEPLOYMENT.md](PROXY_DEPLOYMENT.md) để có hướng dẫn đầy đủ về:
+- Cấu hình Nginx cho reverse proxy
+- Troubleshooting các vấn đề thường gặp
+- Best practices cho production deployment
 
 ---
 

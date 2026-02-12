@@ -75,6 +75,22 @@ RUN ${PYTHON} -c "from unstructured.nlp.tokenize import download_nltk_packages; 
     ${PYTHON} -c "from unstructured.partition.model_init import initialize; initialize()" && \
     ${PYTHON} -c "from unstructured_inference.models.tables import UnstructuredTableTransformerModel; model = UnstructuredTableTransformerModel(); model.initialize('microsoft/table-transformer-structure-recognition')"
 
+# Pre-load YOLO detection model and PaddleOCR models for OCR processing
+# This ensures models are available offline and speeds up first-time inference
+RUN echo "Pre-loading YOLO and PaddleOCR models..." && \
+    ${PYTHON} -c "from unstructured_inference.models.base import get_model; \
+try: \
+    yolo_model = get_model('yolox'); \
+    print('YOLO model loaded successfully'); \
+except Exception as e: \
+    print(f'YOLO model loading failed (will download on first use): {e}'); \
+try: \
+    from paddleocr import PaddleOCR; \
+    ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False); \
+    print('PaddleOCR model loaded successfully'); \
+except Exception as e: \
+    print(f'PaddleOCR loading failed (will download on first use): {e}')" || true
+
 COPY --chown=${NB_USER}:${NB_USER} CHANGELOG.md CHANGELOG.md
 COPY --chown=${NB_USER}:${NB_USER} logger_config.yaml logger_config.yaml
 COPY --chown=${NB_USER}:${NB_USER} prepline_${PIPELINE_PACKAGE}/ prepline_${PIPELINE_PACKAGE}/

@@ -3,11 +3,19 @@
 export PORT=${PORT:-8000}
 export HOST=${HOST:-"0.0.0.0"}
 export WORKERS=${WORKERS:-1}
+export API_ROOT_PATH=${API_ROOT_PATH:-""}
 
 NUMREGEX="^[0-9]+$"
 GRACEFUL_SHUTDOWN_PERIOD_SECONDS=3600
 TIMEOUT_COMMAND='timeout'
 OPTIONAL_TIMEOUT=''
+ROOT_PATH_ARG=''
+
+# Set up root path for proxy deployment
+if [[ -n $API_ROOT_PATH ]]; then
+    ROOT_PATH_ARG="--root-path ${API_ROOT_PATH}"
+    echo "Running with root path: ${API_ROOT_PATH}"
+fi
 
 if [[ -n $MAX_LIFETIME_SECONDS ]]; then
     if ! command -v $TIMEOUT_COMMAND &> /dev/null; then
@@ -29,6 +37,7 @@ ${OPTIONAL_TIMEOUT} \
     --host "$HOST" \
     --port "$PORT" \
     --workers "$WORKERS" \
+    ${ROOT_PATH_ARG} \
 
 echo "Server was shutdown"
 [ -n "$MAX_LIFETIME_SECONDS" ] && echo "Reached timeout of $MAX_LIFETIME_SECONDS seconds"

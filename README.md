@@ -392,6 +392,28 @@ After the graceful period is over if server is still running, it is shutdown for
 
 *Max lifetime requires gnu [timeout](https://www.gnu.org/software/coreutils/manual/html_node/timeout-invocation.html#timeout-invocation) to be installed, available by default on most linux systems. Downloadable on macOS as gtimeout with gnu coreutils.*
 
+#### Proxy Deployment with Custom Subpath
+The API can be deployed behind a reverse proxy (such as Nginx) with a custom subpath. Set the `API_ROOT_PATH` environment variable to specify the subpath:
+
+```bash
+docker run -p 8000:8000 -e API_ROOT_PATH="/api/v1" downloads.unstructured.io/unstructured-io/unstructured-api:latest
+```
+
+With this configuration, the API will be accessible at:
+- Health check: `http://localhost:8000/api/v1/healthcheck`
+- Main endpoint: `http://localhost:8000/api/v1/general/v0/general`
+- API docs: `http://localhost:8000/api/v1/general/docs`
+
+See [PROXY_DEPLOYMENT.md](PROXY_DEPLOYMENT.md) for detailed Nginx configuration examples and troubleshooting.
+
+#### Pre-loaded Models
+The Docker image includes pre-loaded OCR and detection models for improved cold-start performance:
+- **YOLO detection model** (`yolox`) for high-resolution document processing
+- **PaddleOCR models** for text extraction
+- **Table transformer model** for table structure recognition
+
+These models are cached during the Docker build process, eliminating the need for runtime downloads and enabling offline operation.
+
 ## :dizzy: Instructions for using the Docker image
 
 The following instructions are intended to help you get up and running using Docker to interact with `unstructured-api`.

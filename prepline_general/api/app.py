@@ -11,10 +11,15 @@ from prepline_general.api import __version__ as api_version
 
 logger = logging.getLogger("unstructured_api")
 
+# Support for running behind a proxy with custom subpath
+# Set via API_ROOT_PATH environment variable (e.g., "/api" or "/unstructured")
+root_path = os.environ.get("API_ROOT_PATH", "")
+
 app = FastAPI(
     title="Unstructured Pipeline API",
     summary="Partition documents with the Unstructured library",
     version=str(api_version),
+    root_path=root_path,
     docs_url="/general/docs",
     openapi_url="/general/openapi.json",
     servers=[
@@ -130,4 +135,7 @@ def healthcheck(request: Request):
     return {"healthcheck": "HEALTHCHECK STATUS: EVERYTHING OK!"}
 
 
-logger.info("Started Unstructured API")
+if root_path:
+    logger.info(f"Started Unstructured API with root_path: {root_path}")
+else:
+    logger.info("Started Unstructured API")
